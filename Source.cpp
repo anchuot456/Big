@@ -26,12 +26,14 @@ int SoHoa(char c);
 char KiTuHoa(int c);
 char*ChuoiHoa(BIGNUM c);
 BIGNUM TaoBigNum(char*str, int n);
-int SoSanh(BIGNUM a, BIGNUM b);
+int SoSanhLon(BIGNUM a, BIGNUM b);
 BIGNUM Cong(BIGNUM a, BIGNUM b);
 BIGNUM Tru(BIGNUM a, BIGNUM b);
 BIGNUM NhanDonVi(BIGNUM a, BIGNUM b);
 BIGNUM NhanThapPhan(BIGNUM a, BIGNUM b);
 BIGNUM Nhan(BIGNUM a, BIGNUM b);
+short ChiaDonVi(BIGNUM a, BIGNUM b);
+BIGNUM Chia(BIGNUM a, BIGNUM b);
 void NhapList(LIST&L, char*str);
 void XuatList(LIST L);
 void ChuyenSangPostfix(LIST L, LIST&Q);
@@ -119,23 +121,34 @@ BIGNUM TaoBigNum(char*str, int n){
 	}
 	return a;
 }
-int SoSanh(BIGNUM a, BIGNUM b){
+int SoSanhLon(BIGNUM a, BIGNUM b){
 	if (a.num[a.n - 1]>0 && b.num[b.n - 1]<0)
 		return 1;
 	if (a.num[a.n - 1]<0 && b.num[b.n - 1]>0)
 		return 0;
 	if (a.n == b.n){
-		for (int i = a.n - 1; i >= 0; i++){
+		int t = 1;
+		for (int i = a.n - 1; i >= 0; i--){
 			if (a.num[i] > b.num[i])
 				return 1;
 			if (a.num[i] < b.num[i])
 				return 0;
 		}
+		if (t)return 0;
 	}
 	if (a.n < b.n)
 		return 0;
 	else
 		return 1;
+}
+int SoSanhBang(BIGNUM a, BIGNUM b){
+	if (a.n != b.n)return 0;
+	else{
+		for (int i = 0; i < a.n; i++){
+			if (a.num[i] != b.num[i])return 0;
+		}
+	}
+	return 1;
 }
 BIGNUM Cong(BIGNUM a, BIGNUM b){
 	BIGNUM result;
@@ -171,6 +184,11 @@ BIGNUM Cong(BIGNUM a, BIGNUM b){
 }
 BIGNUM Tru(BIGNUM a, BIGNUM b){
 	BIGNUM result;
+	if (SoSanhBang(a, b)){
+		result.n = 1;
+		result.num[0] = 0;
+		return result;
+	}
 	if (a.num[a.n - 1] < 0){
 		a.num[a.n - 1] *= -1;
 		if (b.num[b.n - 1]<0){
@@ -184,7 +202,7 @@ BIGNUM Tru(BIGNUM a, BIGNUM b){
 			return result;
 		}
 	}
-	if (SoSanh(a, b)){
+	if (SoSanhLon(a, b)){
 		for (int i = 0; i < b.n; i++){
 			b.num[i] *= -1;
 		}
@@ -301,6 +319,106 @@ BIGNUM Nhan(BIGNUM a, BIGNUM b){
 	}
 	return result;
 }
+short ChiaDonVi(BIGNUM a, BIGNUM b){
+	BIGNUM result;
+	if (SoSanhLon(b, a)){
+		return 0;
+	}
+	int am = 0;
+	if (a.num[a.n - 1] < 0 && b.num[b.n-1] > 0){
+		am = 1;
+	}
+	if (a.num[a.n - 1] > 0 && b.num[b.n - 1] < 0){
+		am = 1;
+	}
+	if (SoSanhLon(b, a)){
+		return 0;
+	}
+	BIGNUM thapphan;
+	thapphan.n = 2;
+	thapphan.num[0] = 0;
+	thapphan.num[1] = 1;
+	if (!SoSanhLon(a, Nhan(b, thapphan))){
+		short i = 1;
+		for (i;; i++){
+			a = Tru(a, b);
+			if (SoSanhLon(b, a)){
+				break;
+			}
+		}
+		result.n = 1;
+		result.num[0] = i;
+	}
+	if (am){
+		result.num[0] *= -1;
+	}
+	return result.num[0];
+}
+BIGNUM Chia(BIGNUM a, BIGNUM b){
+	BIGNUM result;
+	int a_am = 0, b_am = 0;
+	if (a.num[a.n - 1] < 0){
+		a_am = 1;
+		a.num[a.n - 1] *= -1;
+	}
+	if (b.num[b.n - 1] < 0){
+		b_am = 1;
+		b.num[b.n - 1] *= -1;
+	}
+	if (SoSanhLon(b, a)){
+		result.n = 1;
+		result.num[0] = 0;
+		return result;
+	}
+	if (a.n == b.n){
+		result.num[0] = ChiaDonVi(a, b);
+		result.n = 1;
+	}
+	else{
+		BIGNUM k;
+		k.n = b.n;
+		BIGNUM thapphan;
+		thapphan.n = 2;
+		thapphan.num[0] = 0;
+		thapphan.num[1] = 1;
+		if (SoSanhLon(a, Nhan(b, thapphan)) || SoSanhBang(a, Nhan(b, thapphan))){
+			result.n = a.n - b.n + 1;
+		}
+		else{
+			result.n = a.n - b.n;
+		}
+		for (int i = 0; i < result.n; i++){
+			for (int j = 0; j < k.n; j++){
+				k.num[j] = a.num[a.n - b.n + j];
+			}
+			if (SoSanhLon(b, k) && a.n - i > 0){
+				k.n++;
+				for (int j = 0; j < k.n-1; j++){
+					k.num[k.n - 1 - j] = k.num[k.n - 2 - j];
+				}
+				k.num[0] = a.num[a.n - k.n];
+			}
+			result.num[result.n - 1 - i] = ChiaDonVi(k, b);
+			BIGNUM temp;
+			temp.n = 1;
+			temp.num[0] = result.num[result.n - 1 - i];
+			BIGNUM s = Nhan(temp, b);
+			thapphan.n = a.n - k.n + 1;
+			for (int j = k.n; j<a.n-1; j++){
+				thapphan.num[j - k.n] = 0;
+			}
+			thapphan.num[thapphan.n - 1] = 1;
+			a = Tru(a, NhanThapPhan(s, thapphan));
+		}
+	}
+	if (a_am && b.num[b.n-1]>0 ){
+		result.num[result.n - 1] *= -1;
+	}
+	if (b_am && a.num[a.n - 1]<0){
+		result.num[result.n - 1] *= -1;
+	}
+	return result;
+}
 
 void NhapList(LIST&L, char*str){
 	int i = 0;
@@ -401,8 +519,11 @@ BIGNUM TinhBieuThuc(LIST Q){
 				case 1:
 					result = Tru(a[0], a[1]);
 					break;
-				default:
+				case 2:
 					result = Nhan(a[0], a[1]);
+					break;
+				default:
+					result = Chia(a[0], a[1]);
 					break;
 				}
 				char*str = ChuoiHoa(result);
@@ -436,8 +557,6 @@ void main(){
 	gets_s(a);
 	NhapList(L, a);
 	ChuyenSangPostfix(L, Q);
-	XuatList(Q);
-	printf("\n");
 	BIGNUM e = TinhBieuThuc(Q);
 	XuatDapAn(e);
 	printf("\n");
